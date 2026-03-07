@@ -1,0 +1,27 @@
+#!/bin/bash
+
+DB="/root/xray-panel/users.db"
+
+IP=$(curl -s ifconfig.me)
+PUBLIC=$(cat /opt/xray/public.key)
+
+echo
+echo "Список пользователей:"
+echo
+echo "Всего пользователей: $(wc -l < $DB)"
+echo
+
+i=1
+
+while IFS="|" read EMAIL UUID SHORTID
+do
+
+LINK="vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$EMAIL"
+
+echo "$i) $EMAIL"
+echo "$LINK"
+echo
+
+((i++))
+
+done < "$DB"
