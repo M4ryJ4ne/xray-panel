@@ -2,13 +2,6 @@
 
 DB="/root/xray-panel/users.db"
 
-echo
-echo "Выберите номер пользователя для удаления:"
-echo
-
-nl -w2 -s') ' "$DB" | cut -d'|' -f1,2
-
-echo
 read NUM
 
 USER=$(sed -n "${NUM}p" "$DB")
@@ -26,5 +19,4 @@ bash /root/xray-panel/build_config.sh
 
 systemctl restart xray
 
-echo
 echo "Пользователь $EMAIL удален"

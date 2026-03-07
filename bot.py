@@ -75,12 +75,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+
     # -------------------------
     # КНОПКИ
     # -------------------------
 
     if text in ["Add User", "Remove User", "User List"]:
         await clear_chat(update, context)
+
 
     # -------------------------
     # ADD USER
@@ -103,10 +105,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "Remove User":
 
+        result = subprocess.run(
+            ["bash", "/root/xray-panel/list_users.sh"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout
+        lines = output.splitlines()
+
+        formatted = ""
+
+        for line in lines:
+
+            if line.startswith("vless://"):
+                formatted += f"`{line}`\n"
+            else:
+                formatted += line + "\n"
+
+        formatted += "\nВведите номер профиля:"
+
         await update.message.reply_text(
-            "Введите номер профиля:",
+            formatted,
+            parse_mode="Markdown",
             reply_markup=markup
         )
+
         context.user_data["action"] = "remove_user"
 
         return
@@ -124,10 +148,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=True
         )
 
+        output = result.stdout
+        lines = output.splitlines()
+
+        formatted = ""
+
+        for line in lines:
+
+            if line.startswith("vless://"):
+                formatted += f"`{line}`\n"
+            else:
+                formatted += line + "\n"
+
         await update.message.reply_text(
-            result.stdout,
+            formatted,
+            parse_mode="Markdown",
             reply_markup=markup
         )
+
         return
 
 
@@ -161,11 +199,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
             reply_markup=markup
         )
-#        await update.message.reply_text(
-#            f"<pre>{result.stdout}</pre>",
-#            parse_mode="HTML"
-#        )
-#        await update.message.reply_text(result.stdout)
 
         context.user_data["action"] = None
 

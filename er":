@@ -1,0 +1,9 @@
+● xray-bot.service - Xray Panel Telegram Bot
+     Loaded: loaded (/etc/systemd/system/xray-bot.service; enabled; vendor preset: enabled)
+     Active: activating (auto-restart) (Result: exit-code) since Sat 2026-03-07 11:57:05 UTC; 1s ago
+    Process: 117625 ExecStart=/usr/bin/python3 /root/xray-panel/bot.py [0;1;31m(code=exited, status=1/FAILURE)[0m
+   Main PID: 117625 (code=exited, status=1/FAILURE)
+        CPU: 138ms
+
+Mar 07 11:57:05 vdska systemd[1]: [0;1;39m[0;1;31m[0;1;39mxray-bot.service: Main process exited, code=exited, status=1/FAILURE[0m
+Mar 07 11:57:05 vdska systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mxray-bot.service: Failed with result 'exit-code'.[0m
