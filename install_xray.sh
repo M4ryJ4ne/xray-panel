@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -u
 
 systemctl stop xray 2>/dev/null
 rm -rf /opt/xray

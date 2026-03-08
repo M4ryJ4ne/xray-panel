@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -u
 
 DB="/root/xray-panel/users.db"
 
@@ -9,7 +11,7 @@ UUID=$(/opt/xray/xray uuid)
 
 SHORTID=$(openssl rand -hex 4)
 
-echo "$USERNAME|$UUID|$SHORTID" >> $DB
+echo "$USERNAME|$UUID|$SHORTID" >> "$DB"
 
 bash /root/xray-panel/build_config.sh
 

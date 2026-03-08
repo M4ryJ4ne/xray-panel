@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -u
 
 DB="/root/xray-panel/users.db"
 CONFIG="/opt/xray/config.json"
