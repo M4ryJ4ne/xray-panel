@@ -46,6 +46,15 @@ cat > $CONFIG <<EOF
 "loglevel":"warning"
 },
 
+"stats": {},
+
+"api":{
+"tag":"api",
+"services":[
+"StatsService"
+]
+},
+
 "inbounds":[
 
 {
@@ -83,7 +92,7 @@ $CLIENTS
 "www.microsoft.com"
 ],
 
-"privateKey":"$PRIVATE",
+"privateKey":"WGUMan-HKZW1eXD7O5Awr0kF2fsTmSd5ypXcUh0az3A",
 
 "shortIds":[
 $SHORTIDS
@@ -110,8 +119,24 @@ $SHORTIDS
 {
 "protocol":"blackhole",
 "tag":"block"
+},
+{
+"protocol":"freedom",
+"tag":"api"
+}
+],
+
+"routing":{
+"rules":[
+{
+"type":"field",
+"inboundTag":[
+"api"
+],
+"outboundTag":"api"
 }
 ]
+}
 }
 EOF
 
