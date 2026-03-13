@@ -2,10 +2,11 @@
 set -e
 set -u
 
-DB="/root/xray-panel/users.db"
+DB="/root/xray-panel/bot_db/users.db"
 
-echo "Введите имя пользователя:"
-read USERNAME
+USERNAME="$1"
+#echo "Введите имя пользователя:"
+#read USERNAME
 
 UUID=$(/opt/xray/xray uuid)
 

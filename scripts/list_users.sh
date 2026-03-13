@@ -2,7 +2,7 @@
 set -e
 set -u
 
-DB="/root/xray-panel/users.db"
+DB="/root/xray-panel/bot_db/users.db"
 
 IP=$(curl -s ifconfig.me)
 PUBLIC=$(cat /opt/xray/public.key)
@@ -15,7 +15,7 @@ echo
 
 i=1
 
-while IFS="|" read EMAIL UUID SHORTID
+while IFS="|" read -r EMAIL UUID SHORTID
 do
 
 LINK="vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$EMAIL"

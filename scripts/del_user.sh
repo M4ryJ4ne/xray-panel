@@ -2,9 +2,9 @@
 set -e
 set -u
 
-DB="/root/xray-panel/users.db"
+DB="/root/xray-panel/bot_db/users.db"
 
-read NUM
+read -r NUM
 
 USER=$(sed -n "${NUM}p" "$DB")
 

@@ -2,107 +2,131 @@
 set -e
 set -u
 
-DB="/root/xray-panel/users.db"
+DB="/root/xray-panel/bot_db/users.db"
 CONFIG="/opt/xray/config.json"
 
 PRIVATE=$(cat /opt/xray/private.key)
 
-CLIENTS=""
-SHORTIDS=""
+CLIENTS="[]"
+SHORTIDS="[]"
 
-FIRST=1
+# =========================
+# СОЗДАЕМ CLIENTS JSON
+# =========================
 
 while IFS="|" read -r EMAIL UUID SHORTID
 do
 
 [ -z "$UUID" ] && continue
 
-if [ $FIRST -eq 0 ]; then
-CLIENTS+=","
-SHORTIDS+=","
-fi
+CLIENT=$(jq -n \
+--arg id "$UUID" \
+--arg email "$EMAIL" \
+'{
+id:$id,
+email:$email,
+flow:"xtls-rprx-vision"
+}')
 
-CLIENTS+="
-{
-\"id\":\"$UUID\",
-\"email\":\"$EMAIL\",
-\"flow\":\"xtls-rprx-vision\"
-}
-"
+CLIENTS=$(echo "$CLIENTS" | jq ". + [$CLIENT]")
 
-SHORTIDS+="\"$SHORTID\""
-
-FIRST=0
+SHORTIDS=$(echo "$SHORTIDS" | jq ". + [\"$SHORTID\"]")
 
 done < "$DB"
 
-cp $CONFIG $CONFIG.bak
 
-cat > $CONFIG <<EOF
-{
-"log":{
-"access":"/var/log/xray/access.log",
-"error":"/var/log/xray/error.log",
-"loglevel":"warning"
+# =========================
+# BACKUP
+# =========================
+
+cp "$CONFIG" "$CONFIG.bak" 2>/dev/null || true
+
+
+# =========================
+# СОЗДАЕМ КОНФИГ
+# =========================
+
+jq -n \
+--arg private "$PRIVATE" \
+--argjson clients "$CLIENTS" \
+--argjson shortids "$SHORTIDS" \
+'{
+
+log:{
+access:"/var/log/xray/access.log",
+error:"/var/log/xray/error.log",
+loglevel:"warning"
 },
 
-"stats": {},
-
-"api":{
-"tag":"api",
-"services":[
-"StatsService"
-]
+api:{
+tag:"api",
+services:["StatsService"]
 },
 
-"inbounds":[
+stats:{},
 
-{
-"listen":"127.0.0.1",
-"port":10085,
-"protocol":"dokodemo-door",
-"settings":{
-"address":"127.0.0.1"
-},
-"tag":"api"
-},
-
-{
-"port":443,
-"protocol":"vless",
-"tag":"vless_tls",
-
-"settings":{
-"clients":[
-$CLIENTS
-],
-"decryption":"none"
-},
-
-"streamSettings":{
-"network":"tcp",
-"security":"reality",
-
-"realitySettings":{
-"show":false,
-"dest":"www.microsoft.com:443",
-"xver":0,
-
-"serverNames":[
-"www.microsoft.com"
-],
-
-"privateKey":"WGUMan-HKZW1eXD7O5Awr0kF2fsTmSd5ypXcUh0az3A",
-
-"shortIds":[
-$SHORTIDS
-]
+policy:{
+system:{
+statsInboundUplink:true,
+statsInboundDownlink:true
 }
 },
 
-"sniffing":{
-"enabled":true,
-"destOverride":[
+routing:{
+domainStrategy:"AsIs",
+rules:[
+{
+type:"field",
+inboundTag:["api"],
+outboundTag:"api"
+}
+]
+},
+
+inbounds:[
+
+{
+listen:"127.0.0.1",
+port:10085,
+protocol:"dokodemo-door",
+settings:{
+address:"127.0.0.1"
+},
+tag:"api"
+},
+
+{
+port:443,
+protocol:"vless",
+tag:"vless_tls",
+
+settings:{
+clients:$clients,
+decryption:"none"
+},
+
+streamSettings:{
+network:"tcp",
+security:"reality",
+
+realitySettings:{
+show:false,
+dest:"www.microsoft.com:443",
+xver:0,
+
+serverNames:[
+"www.microsoft.com"
+],
+
+privateKey:$private,
+
+shortIds:$shortids
+}
+},
+
+sniffing:{
+enabled:true,
+destOverride:[
 "http",
 "tls"
 ]
@@ -111,36 +135,32 @@ $SHORTIDS
 
 ],
 
-"outbounds":[
+outbounds:[
 {
-"protocol":"freedom",
-"tag":"direct"
+protocol:"freedom",
+tag:"direct"
 },
 {
-"protocol":"blackhole",
-"tag":"block"
-},
-{
-"protocol":"freedom",
-"tag":"api"
-}
-],
-
-"routing":{
-"rules":[
-{
-"type":"field",
-"inboundTag":[
-"api"
-],
-"outboundTag":"api"
+protocol:"blackhole",
+tag:"block"
 }
 ]
-}
-}
-EOF
 
-jq . $CONFIG > /dev/null || { echo "CONFIG ERROR"; exit 1; }
+}
+' > "$CONFIG"
+
+
+# =========================
+# ПРОВЕРКА JSON
+# =========================
+
+jq . "$CONFIG" > /dev/null || {
+
+echo "CONFIG ERROR"
+exit 1
+
+}
+
 
 echo "Config rebuilt successfully"
 

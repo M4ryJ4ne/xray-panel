@@ -2,3 +2,5 @@ users.db
 *.key
 *.log
 .env
+users.py
+botMAIN.py

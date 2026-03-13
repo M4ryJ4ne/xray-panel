@@ -28,9 +28,9 @@ SCRIPTS_DIR = config["SCRIPTS_DIR"]
 
 keyboard = [
 
-    ["Add User", "Remove User"],
-
     ["User List"],
+
+    ["Add User", "Remove User"],
 
     # =========================
     # БЛОК ДОБАВЛЕНИЯ КНОПОК
@@ -84,6 +84,158 @@ async def handle_message(update, context):
         )
 
         await update.message.reply_text(result.stdout)
+
+
+    # -------------------------
+    # USER LIST
+    # -------------------------
+
+    if text == "User List":
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/list_users.sh"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout
+        lines = output.splitlines()
+
+        formatted = ""
+
+        for line in lines:
+
+            # если это ссылка vless
+            if line.startswith("vless://"):
+
+                # делаем форматирование чтобы копировалось
+                formatted += f"`{line}`\n"
+
+            else:
+                # обычный текст без форматирования
+                formatted += line + "\n"
+
+        await update.message.reply_text(
+            formatted,
+            parse_mode="Markdown"
+        )
+
+
+    # -------------------------
+    # ADD USER
+    # -------------------------
+
+    if text == "Add User":
+
+        await update.message.reply_text(
+            "Введите имя пользователя:"
+        )
+
+        context.user_data["action"] = "add_user"
+
+        return
+
+
+    # -------------------------
+    # REMOVE USER
+    # -------------------------
+
+    if text == "Remove User":
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/list_users.sh"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout
+        lines = output.splitlines()
+
+        formatted = ""
+
+        for line in lines:
+
+            if line.startswith("vless://"):
+                formatted += f"`{line}`\n"
+            else:
+                formatted += line + "\n"
+
+        formatted += "\nВведите номер пользователя для удаления:"
+
+        await update.message.reply_text(
+            formatted,
+            parse_mode="Markdown"
+        )
+
+        context.user_data["action"] = "remove_user"
+
+        return
+
+
+    # -------------------------
+    # ВВОД ИМЕНИ ДЛЯ ADD USER
+    # -------------------------
+
+    action = context.user_data.get("action")
+
+    if action == "add_user":
+
+        username = text
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/add_user.sh", username],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout
+        lines = output.splitlines()
+
+        formatted = ""
+        link = ""
+
+        for line in lines:
+
+            if line.startswith("vless://"):
+                link = line
+            else:
+                formatted += line + "\n"
+
+        await update.message.reply_text(
+            f"{formatted}\n`{link}`",
+            parse_mode="Markdown"
+        )
+
+        context.user_data["action"] = None
+
+        return
+
+
+    # -------------------------
+    # ВВОД НОМЕРА ДЛЯ REMOVE USER
+    # -------------------------
+
+    if action == "remove_user":
+
+        number = text
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/del_user.sh"],
+            input=number + "\n",
+            text=True,
+            capture_output=True
+        )
+
+        output = result.stdout + result.stderr
+
+        await update.message.reply_text(
+            output
+        )
+
+        context.user_data["action"] = None
+
+        return
+
 
 
 # =========================

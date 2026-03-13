@@ -15,7 +15,7 @@ echo "=============================="
 PANEL_DIR="/root/xray-panel"
 XRAY_DIR="/opt/xray"
 CONFIG="$XRAY_DIR/config.json"
-DB="$PANEL_DIR/users.db"
+DB="$PANEL_DIR/bot_db/users.db"
 
 mkdir -p $XRAY_DIR
 mkdir -p $PANEL_DIR
