@@ -37,7 +37,7 @@ keyboard = [
     # =========================
     # сюда добавляется новая кнопка
 
-    ["Test"]
+    ["Live Monitor"]
 
 ]
 
@@ -61,12 +61,59 @@ async def start(update, context):
 
 
 # =========================
+# LIVE MONITOR TASK
+# =========================
+
+async def live_monitor_task(update, context):
+
+    chat_id = update.effective_chat.id
+
+    while context.user_data.get("live_profile_running", False):
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/live_profile.sh", "2"],
+            capture_output=True,
+            text=True
+        )
+
+        output = (result.stdout + result.stderr).strip()
+
+        old_msg_id = context.user_data.get("live_profile_message_id")
+        if old_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=old_msg_id
+                )
+            except:
+                pass
+
+        sent = await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"<pre>{html.escape(output)}</pre>",
+            parse_mode="HTML"
+        )
+
+        context.user_data["live_profile_message_id"] = sent.message_id
+
+        await asyncio.sleep(2)
+
+
+# =========================
 # ОБРАБОТКА КНОПОК
 # =========================
 
 async def handle_message(update, context):
 
     text = update.message.text
+
+    # -------------------------
+    # ОСТАНОВКА LIVE MONITOR
+    # если нажата любая другая кнопка
+    # -------------------------
+
+    if text != "Live Monitor":
+        context.user_data["live_profile_running"] = False
 
 
     # =========================
@@ -171,6 +218,28 @@ async def handle_message(update, context):
 
         return
 
+
+    # -------------------------
+    # LIVE MONITOR
+    # -------------------------
+
+    if text == "Live Monitor":
+
+        context.user_data["live_profile_running"] = True
+
+        old_msg_id = context.user_data.get("live_profile_message_id")
+        if old_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=old_msg_id
+                )
+            except:
+                pass
+
+        asyncio.create_task(live_monitor_task(update, context))
+
+        return
 
     # -------------------------
     # ВВОД ИМЕНИ ДЛЯ ADD USER

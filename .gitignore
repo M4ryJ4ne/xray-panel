@@ -2,3 +2,4 @@ users.db
 *.key
 *.log
 .env
+config
