@@ -1,6 +1,4 @@
-users.db
 *.key
 *.log
 .env
-config
-users_id.db
+bot_db/

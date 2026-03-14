@@ -14,12 +14,22 @@ config = {}
 
 with open("config") as f:
     for line in f:
-        key, value = line.strip().split("=")
-        config[key] = value
+        line = line.strip()
+        if not line or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        config[key.strip()] = value.strip().strip('"')
 
 TOKEN = config["BOT_TOKEN"]
-ADMIN_ID = int(config["ADMIN_ID"])
+#ADMIN_ID = int(config["ADMIN_ID"])
 SCRIPTS_DIR = config["SCRIPTS_DIR"]
+REBOOT_PASS = config["REBOOT_PASS"]
+BOT_PASS = config["BOT_PASS"]
+
+AUTH_DB = "/root/xray-panel/bot_db/auth_users.db"
+os.makedirs("/root/xray-panel/bot_db", exist_ok=True)
+if not os.path.exists(AUTH_DB):
+    open(AUTH_DB, "a").close()
 
 
 # =========================
@@ -28,16 +38,11 @@ SCRIPTS_DIR = config["SCRIPTS_DIR"]
 
 keyboard = [
 
-    ["User List"],
+    ["Live Monitor"],
 
+    ["User List", "Devices"],
     ["Add User", "Remove User"],
-
-    # =========================
-    # БЛОК ДОБАВЛЕНИЯ КНОПОК
-    # =========================
-    # сюда добавляется новая кнопка
-
-    ["Live Monitor"]
+    ["Reboot Server"]
 
 ]
 
@@ -50,14 +55,34 @@ reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 async def start(update, context):
 
-    if update.message.from_user.id != ADMIN_ID:
-        await update.message.reply_text("Access denied")
+    user_id = update.message.from_user.id
+
+    if is_authorized(user_id):
+        await update.message.reply_text(
+            "XRAY PANEL",
+            reply_markup=reply_markup
+        )
         return
 
-    await update.message.reply_text(
-        "XRAY PANEL",
-        reply_markup=reply_markup
-    )
+    context.user_data["action"] = "bot_auth"
+
+    await update.message.reply_text("Введите пароль от бота:")
+
+
+# =========================
+# АВТОРИЗАЦИЯ ПО БАЗЕ USER ID
+# =========================
+
+def is_authorized(user_id: int) -> bool:
+    with open(AUTH_DB, "r") as f:
+        ids = {line.strip() for line in f if line.strip()}
+    return str(user_id) in ids
+
+def add_authorized_user(user_id: int) -> None:
+    if is_authorized(user_id):
+        return
+    with open(AUTH_DB, "a") as f:
+        f.write(f"{user_id}\n")
 
 
 # =========================
@@ -98,6 +123,9 @@ async def live_monitor_task(update, context):
 
         await asyncio.sleep(2)
 
+    # сброс флага задачи
+    context.user_data["live_monitor_task"] = None
+
 
 # =========================
 # ОБРАБОТКА КНОПОК
@@ -106,6 +134,38 @@ async def live_monitor_task(update, context):
 async def handle_message(update, context):
 
     text = update.message.text
+
+    user_id = update.message.from_user.id
+    action = context.user_data.get("action")
+
+    # -------------------------
+    # ВВОД ПАРОЛЯ ДЛЯ ДОСТУПА К БОТУ
+    # -------------------------
+
+    if action == "bot_auth":
+
+        password = text.strip()
+
+        if password != BOT_PASS:
+            await update.message.reply_text("Неверный пароль")
+            return
+
+        add_authorized_user(user_id)
+        context.user_data["action"] = None
+
+        await update.message.reply_text(
+            "Доступ разрешён",
+            reply_markup=reply_markup
+        )
+
+        return
+
+    # если пользователь не авторизован — ничего не даём делать
+    if not is_authorized(user_id):
+        context.user_data["action"] = "bot_auth"
+        await update.message.reply_text("Введите пароль от бота:")
+        return
+
 
     # -------------------------
     # ОСТАНОВКА LIVE MONITOR
@@ -225,6 +285,11 @@ async def handle_message(update, context):
 
     if text == "Live Monitor":
 
+        # если монитор уже работает — ничего не делаем
+        if context.user_data.get("live_monitor_task"):
+            await update.message.reply_text("Live monitor уже запущен")
+            return
+
         context.user_data["live_profile_running"] = True
 
         old_msg_id = context.user_data.get("live_profile_message_id")
@@ -237,15 +302,53 @@ async def handle_message(update, context):
             except:
                 pass
 
-        asyncio.create_task(live_monitor_task(update, context))
+        task = asyncio.create_task(live_monitor_task(update, context))
+
+        context.user_data["live_monitor_task"] = task
 
         return
+
+
+    # -------------------------
+    # REBOOT SERVER
+    # -------------------------
+
+    if text == "Reboot Server":
+
+        await update.message.reply_text(
+            "Введите пароль для перезапуска сервера:"
+        )
+
+        context.user_data["action"] = "reboot_server"
+
+        return
+
+
+    # -------------------------
+    # DEVICES LIST
+    # -------------------------
+
+    if text == "Devices":
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/list_devices.sh"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout + result.stderr
+
+        await update.message.reply_text(
+            f"<pre>{html.escape(output)}</pre>",
+            parse_mode="HTML"
+        )
+
+        return
+
 
     # -------------------------
     # ВВОД ИМЕНИ ДЛЯ ADD USER
     # -------------------------
-
-    action = context.user_data.get("action")
 
     if action == "add_user":
 
@@ -305,6 +408,35 @@ async def handle_message(update, context):
 
         return
 
+
+    # -------------------------
+    # ВВОД ПАРОЛЯ ДЛЯ REBOOT SERVER
+    # -------------------------
+
+    if action == "reboot_server":
+
+        password = text.strip()
+
+        if password != REBOOT_PASS:
+            await update.message.reply_text("Неверный пароль")
+            context.user_data["action"] = None
+            return
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/reboot.sh"],
+            capture_output=True,
+            text=True
+        )
+
+        output = (result.stdout + result.stderr).strip()
+
+        await update.message.reply_text(
+            output if output else "Сервер перезагружается..."
+        )
+
+        context.user_data["action"] = None
+
+        return
 
 
 # =========================
