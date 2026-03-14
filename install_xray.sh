@@ -29,8 +29,12 @@ touch "$USERS_ID_DB"
 
 echo "Устанавливаем зависимости..."
 apt update -y
-apt install -y curl unzip jq openssl python3 python3-pip ca-certificates
-python3 -m pip install --break-system-packages python-telegram-bot >/dev/null 2>&1 || true
+apt install -y curl unzip jq openssl python3 python3-pip ca-certificates python3-venv
+#python3 -m pip install --break-system-packages python-telegram-bot >/dev/null 2>&1 || true
+cd $PANEL_DIR
+python3 -m venv venv
+$PANEL_DIR/venv/bin/pip install --upgrade pip
+$PANEL_DIR/venv/bin/pip install -r $PANEL_DIR/requirements.txt
 
 echo "Останавливаем старые сервисы..."
 systemctl stop xray 2>/dev/null || true
@@ -243,7 +247,7 @@ After=network.target xray.service
 [Service]
 Type=simple
 WorkingDirectory=$PANEL_DIR
-ExecStart=/usr/bin/python3 $PANEL_DIR/bot.py
+ExecStart=$PANEL_DIR/venv/bin/python $PANEL_DIR/bot.py
 Restart=always
 RestartSec=5
 User=root
