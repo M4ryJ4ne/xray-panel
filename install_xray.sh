@@ -17,6 +17,7 @@ USERS_ID_DB="$DB_DIR/users_id.db"
 XRAY_SERVICE="/etc/systemd/system/xray.service"
 BOT_SERVICE="/etc/systemd/system/xray-bot.service"
 COLLECTOR_SERVICE="/etc/systemd/system/xray-devices-collector.service"
+TRAFFIC_COLLECTOR_SERVICE="/etc/systemd/system/xray-traffic-collector.service"
 
 mkdir -p "$XRAY_DIR"
 mkdir -p "$PANEL_DIR"
@@ -40,6 +41,7 @@ echo "Останавливаем старые сервисы..."
 systemctl stop xray 2>/dev/null || true
 systemctl stop xray-bot 2>/dev/null || true
 systemctl stop xray-devices-collector 2>/dev/null || true
+systemctl stop xray-traffic-collector 2>/dev/null || true
 
 echo "Скачиваем Xray..."
 cd /tmp
@@ -273,6 +275,23 @@ User=root
 WantedBy=multi-user.target
 EOF
 
+echo "Создаём xray-traffic-collector.service..."
+cat > "$TRAFFIC_COLLECTOR_SERVICE" <<EOF
+[Unit]
+Description=Xray Traffic Collector
+After=network.target xray.service
+
+[Service]
+Type=simple
+ExecStart=$PANEL_DIR/scripts/traffic_collect_loop.sh
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
 
 echo "Включаем и запускаем сервисы..."
@@ -302,6 +321,9 @@ systemctl --no-pager --full status xray-bot || true
 echo
 echo "Devices collector status:"
 systemctl --no-pager --full status xray-devices-collector || true
+echo
+echo "Traffic collector status:"
+systemctl --no-pager --full status xray-traffic-collector || true
 
 echo
 echo "Ссылка подключения:"

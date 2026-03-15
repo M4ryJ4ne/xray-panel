@@ -20,7 +20,8 @@ do
 
 LINK="vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$EMAIL"
 
-echo "№ $i. $EMAIL📲"
+echo "$i. $EMAIL📲"
+echo
 echo "$LINK"
 echo
 

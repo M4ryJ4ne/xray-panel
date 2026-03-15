@@ -231,7 +231,7 @@ get_email_by_ip() {
 
         idx=1
             for email in $(printf "%s\n" "${!USER_IPS[@]}" 2>/dev/null | sed '/^$/d' | sort); do
-            echo "№ $idx. $email📲"
+            echo "$idx. $email📲"
 
             rates=$(get_profile_rate "$email")
             up_bps=${rates%|*}

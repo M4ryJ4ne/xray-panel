@@ -23,7 +23,8 @@ while IFS='|' read -r email ip device_id first_seen; do
         fi
 
         count=$((count+1))
-        echo "№ $count. $email📲"
+        echo "$count. $email📲"
+        echo
         current_user="$email"
     fi
 

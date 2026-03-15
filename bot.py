@@ -38,10 +38,10 @@ if not os.path.exists(AUTH_DB):
 
 keyboard = [
 
-    ["Мониторинг ☣️"],
+    ["Мониторинг ☣️", "Статистика ☢️"],
     ["Профили ✳️", "Устройства 🆔"],
     ["Добавить Профиль ⚛️", "Удалить Профиль ❎"],
-    ["Перезапустить Сервер ☢️"]
+    ["Перезапустить Сервер 📴"]
 
 ]
 
@@ -225,6 +225,55 @@ async def handle_message(update, context):
 
 
     # -------------------------
+    # PROFILE REPORT
+    # -------------------------
+
+    if text == "Статистика ☢️":
+
+        result = subprocess.run(
+            [f"{SCRIPTS_DIR}/profile_report.sh"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout + result.stderr
+        lines = output.splitlines()
+
+        formatted = ""
+
+        for line in lines:
+
+            stripped = line.strip()
+
+            # профиль
+            if stripped and stripped[0].isdigit() and ". " in stripped and not stripped.startswith("Traffic"):
+                parts = stripped.split(" ", 1)
+
+                if len(parts) == 2:
+                    number = parts[0]
+                    value = parts[1]
+
+                    # если это IP
+                    if value.count(".") == 3 and all(part.isdigit() for part in value.split(".")):
+                        formatted += f"   {number} <code>{html.escape(value)}</code>\n"
+                        continue
+
+                    # если это профиль
+                    if not value.startswith("Traffic") and not value.startswith("Devices") and not value.startswith("first"):
+                        formatted += f"{number} <code>{html.escape(value)}</code>\n"
+                        continue
+
+            formatted += html.escape(line) + "\n"
+
+        await update.message.reply_text(
+            formatted,
+            parse_mode="HTML"
+        )
+
+        return
+
+
+    # -------------------------
     # USER LIST
     # -------------------------
 
@@ -346,7 +395,7 @@ async def handle_message(update, context):
     # REBOOT SERVER
     # -------------------------
 
-    if text == "Перезапустить Сервер ☢️":
+    if text == "Перезапустить Сервер 📴":
 
         await update.message.reply_text(
             "Требуется ключ 🫆"
