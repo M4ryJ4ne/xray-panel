@@ -8,7 +8,7 @@ if [ ! -f "$DB" ] || [ ! -s "$DB" ]; then
     exit 0
 fi
 
-echo "Список устройств 📒"
+echo "📒 Список устройств 📒"
 echo
 
 current_user=""

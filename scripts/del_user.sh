@@ -21,4 +21,4 @@ bash /root/xray-panel/build_config.sh
 
 systemctl restart xray
 
-echo "Пользователь $EMAIL удален"
+echo "Профиль $EMAIL удален ⚠️"

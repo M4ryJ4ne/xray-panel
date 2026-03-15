@@ -25,7 +25,8 @@ CLIENT=$(jq -n \
 '{
 id:$id,
 email:$email,
-flow:"xtls-rprx-vision"
+flow:"xtls-rprx-vision",
+level:0
 }')
 
 CLIENTS=$(echo "$CLIENTS" | jq ". + [$CLIENT]")
@@ -69,6 +70,12 @@ policy:{
 system:{
 statsInboundUplink:true,
 statsInboundDownlink:true
+},
+"levels": {
+"0": {
+"statsUserUplink": true,
+"statsUserDownlink": true
+}
 }
 },
 

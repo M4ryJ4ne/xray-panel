@@ -8,7 +8,7 @@ IP=$(curl -s ifconfig.me)
 PUBLIC=$(cat /opt/xray/public.key)
 
 echo
-echo "Список профилей 📙"
+echo "📙 Список профилей 📙"
 echo
 echo "Всего: $(wc -l < $DB)"
 echo

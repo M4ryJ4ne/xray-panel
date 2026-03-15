@@ -68,34 +68,32 @@ get_geo() {
 read_xray_stats() {
     : > "$CUR_STATS"
 
-    "$XRAY_BIN" api statsquery --server="$XRAY_API" 2>/dev/null | awk '
-        /name:/ {
-            if (match($0, /user>>>([^"]+)>>>traffic>>>(uplink|downlink)/, m)) {
+    "$XRAY_BIN" api statsquery --server="$XRAY_API" 2>/dev/null \
+    | jq -r '
+        .stat[]
+        | select(.name | startswith("user>>>"))
+        | .name + "|" + (.value|tostring)
+    ' \
+    | awk -F'|' '
+        {
+            name=$1
+            value=$2
+
+            if (match(name, /user>>>(.*)>>>traffic>>>(uplink|downlink)/, m)) {
                 user=m[1]
                 dir=m[2]
+
+                if (dir=="uplink") up[user]=value
+                if (dir=="downlink") down[user]=value
             }
-        }
-        /value:/ {
-            gsub(/[^0-9]/, "", $0)
-            if (user != "" && dir != "") {
-                print user "|" dir "|" $0
-                user=""
-                dir=""
-            }
-        }
-    ' | awk -F'|' '
-        {
-            key=$1
-            if ($2=="uplink") up[key]=$3
-            if ($2=="downlink") down[key]=$3
         }
         END {
-            for (k in up) {
-                if (down[k]=="") down[k]=0
-                print k "|" up[k] "|" down[k]
+            for (u in up) {
+                if (down[u] == "") down[u]=0
+                print u "|" up[u] "|" down[u]
             }
-            for (k in down) {
-                if (!(k in up)) print k "|0|" down[k]
+            for (u in down) {
+                if (!(u in up)) print u "|0|" down[u]
             }
         }
     ' | sort -u > "$CUR_STATS"
@@ -198,9 +196,9 @@ get_email_by_ip() {
 #while true; do
     read_xray_stats
 
-    echo "🟢 XRAY LIVE MONITOR"
+    echo "🔮 XRAY LIVE MONITOR 🔮"
     echo
-    echo "🖥 SYSTEM"
+    echo "👾 Система"
     echo "CPU: $(get_cpu)%   RAM: $(get_ram)"
     echo
 
@@ -226,14 +224,14 @@ get_email_by_ip() {
     user_count=$(printf '%s\n' "${!USER_IPS[@]}" 2>/dev/null | sed '/^$/d' | wc -l)
 
     if [ "$user_count" -eq 0 ]; then
-        echo "🧾 ONLINE PROFILES: 0"
+        echo "✳️ Онлайн 0"
     else
-        echo "🧾 ONLINE PROFILES: $user_count"
+        echo "✳️ Онлайн $user_count"
         echo
 
         idx=1
             for email in $(printf "%s\n" "${!USER_IPS[@]}" 2>/dev/null | sed '/^$/d' | sort); do
-            echo "$idx. $email"
+            echo "№ $idx. $email📲"
 
             rates=$(get_profile_rate "$email")
             up_bps=${rates%|*}
@@ -244,8 +242,8 @@ get_email_by_ip() {
                 ip_count=$((ip_count+1))
             done
 
-            echo "   📡 Traffic: ↓ $(human_bps "$down_bps")   ↑ $(human_bps "$up_bps")"
-            echo "   🌐 Devices online: $ip_count"
+            echo "   ♒️ Трафик: ↓ $(human_bps "$down_bps")   ↑ $(human_bps "$up_bps")"
+            echo "   🆔 Устройства: $ip_count"
             echo
 
             for ip in ${USER_IPS[$email]}; do
@@ -256,8 +254,8 @@ get_email_by_ip() {
                 isp=${geo#*|}
 
                 echo "   $dev_id. $ip"
-                echo "      🏳 Country: $country"
-                echo "      🏢 ISP: $isp"
+                echo "      🌐 Страна: $country"
+                echo "      💠 Провайдер: $isp"
             done
 
             echo
