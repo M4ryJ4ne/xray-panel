@@ -162,6 +162,6 @@ exit 1
 }
 
 
-echo "Config rebuilt successfully"
+echo "Ребилд конфигурации сервера выполнен 🧬"
 
 systemctl restart xray

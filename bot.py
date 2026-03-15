@@ -38,11 +38,10 @@ if not os.path.exists(AUTH_DB):
 
 keyboard = [
 
-    ["Live Monitor"],
-
-    ["User List", "Devices"],
-    ["Add User", "Remove User"],
-    ["Reboot Server"]
+    ["Мониторинг ☣️"],
+    ["Профили ✳️", "Устройства 🆔"],
+    ["Добавить Профиль ⚛️", "Удалить Профиль ❎"],
+    ["Перезапустить Сервер ☢️"]
 
 ]
 
@@ -59,14 +58,14 @@ async def start(update, context):
 
     if is_authorized(user_id):
         await update.message.reply_text(
-            "XRAY PANEL",
+            "🪁  XRAY PANEL 🪁 ",
             reply_markup=reply_markup
         )
         return
 
     context.user_data["action"] = "bot_auth"
 
-    await update.message.reply_text("Введите пароль от бота:")
+    await update.message.reply_text("Требуется ключ 🫆")
 
 
 # =========================
@@ -103,6 +102,38 @@ async def live_monitor_task(update, context):
 
         output = (result.stdout + result.stderr).strip()
 
+        lines = output.splitlines()
+        formatted = ""
+
+        for line in lines:
+
+            stripped = line.strip()
+
+            # профиль
+            if stripped.startswith(tuple(str(i) for i in range(1, 100))) and "." in stripped:
+
+                parts = stripped.split(" ", 1)
+
+                if len(parts) == 2 and not parts[1].count(".") == 3:
+                    number = parts[0]
+                    profile = parts[1]
+
+                    formatted += f"{number} <code>{html.escape(profile)}</code>\n"
+                    continue
+
+            # IP
+            parts = stripped.split()
+
+            if len(parts) == 2 and parts[1].count(".") == 3:
+
+                number = parts[0]
+                ip = parts[1]
+
+                formatted += f"   {number} <code>{ip}</code>\n"
+                continue
+
+            formatted += html.escape(line) + "\n"
+
         old_msg_id = context.user_data.get("live_profile_message_id")
         if old_msg_id:
             try:
@@ -115,7 +146,7 @@ async def live_monitor_task(update, context):
 
         sent = await context.bot.send_message(
             chat_id=chat_id,
-            text=f"<pre>{html.escape(output)}</pre>",
+            text=formatted,
             parse_mode="HTML"
         )
 
@@ -147,14 +178,14 @@ async def handle_message(update, context):
         password = text.strip()
 
         if password != BOT_PASS:
-            await update.message.reply_text("Неверный пароль")
+            await update.message.reply_text("Ключ неверный 🫟")
             return
 
         add_authorized_user(user_id)
         context.user_data["action"] = None
 
         await update.message.reply_text(
-            "Доступ разрешён",
+            "Доступ разрешён ✅",
             reply_markup=reply_markup
         )
 
@@ -163,7 +194,7 @@ async def handle_message(update, context):
     # если пользователь не авторизован — ничего не даём делать
     if not is_authorized(user_id):
         context.user_data["action"] = "bot_auth"
-        await update.message.reply_text("Введите пароль от бота:")
+        await update.message.reply_text("Требуется ключ 🫆")
         return
 
 
@@ -172,7 +203,7 @@ async def handle_message(update, context):
     # если нажата любая другая кнопка
     # -------------------------
 
-    if text != "Live Monitor":
+    if text != "Мониторинг ☣️":
         context.user_data["live_profile_running"] = False
 
 
@@ -197,7 +228,7 @@ async def handle_message(update, context):
     # USER LIST
     # -------------------------
 
-    if text == "User List":
+    if text == "Профили ✳️":
 
         result = subprocess.run(
             [f"{SCRIPTS_DIR}/list_users.sh"],
@@ -227,15 +258,17 @@ async def handle_message(update, context):
             parse_mode="Markdown"
         )
 
+        return
+
 
     # -------------------------
     # ADD USER
     # -------------------------
 
-    if text == "Add User":
+    if text == "Добавить Профиль ⚛️":
 
         await update.message.reply_text(
-            "Введите имя пользователя:"
+            "Введите имя нового профиля 🙋‍♂"
         )
 
         context.user_data["action"] = "add_user"
@@ -247,7 +280,7 @@ async def handle_message(update, context):
     # REMOVE USER
     # -------------------------
 
-    if text == "Remove User":
+    if text == "Удалить Профиль ❎":
 
         result = subprocess.run(
             [f"{SCRIPTS_DIR}/list_users.sh"],
@@ -267,7 +300,7 @@ async def handle_message(update, context):
             else:
                 formatted += line + "\n"
 
-        formatted += "\nВведите номер пользователя для удаления:"
+        formatted += "\nВведите номер профиля 🙅‍♂"
 
         await update.message.reply_text(
             formatted,
@@ -283,11 +316,11 @@ async def handle_message(update, context):
     # LIVE MONITOR
     # -------------------------
 
-    if text == "Live Monitor":
+    if text == "Мониторинг ☣️":
 
         # если монитор уже работает — ничего не делаем
         if context.user_data.get("live_monitor_task"):
-            await update.message.reply_text("Live monitor уже запущен")
+            await update.message.reply_text("Нажми другую кнопку чтобы отключить ⚠️")
             return
 
         context.user_data["live_profile_running"] = True
@@ -313,10 +346,10 @@ async def handle_message(update, context):
     # REBOOT SERVER
     # -------------------------
 
-    if text == "Reboot Server":
+    if text == "Перезапустить Сервер ☢️":
 
         await update.message.reply_text(
-            "Введите пароль для перезапуска сервера:"
+            "Требуется ключ 🫆"
         )
 
         context.user_data["action"] = "reboot_server"
@@ -328,7 +361,7 @@ async def handle_message(update, context):
     # DEVICES LIST
     # -------------------------
 
-    if text == "Devices":
+    if text == "Устройства 🆔":
 
         result = subprocess.run(
             [f"{SCRIPTS_DIR}/list_devices.sh"],
@@ -336,15 +369,34 @@ async def handle_message(update, context):
             text=True
         )
 
-        output = result.stdout + result.stderr
+        output = result.stdout
+        lines = output.splitlines()
+
+        formatted = ""
+
+        for line in lines:
+
+            stripped = line.strip()
+
+            # строка вида: "1. 185.108.19.37"
+            parts = stripped.split()
+
+            if len(parts) == 2 and parts[1].count(".") == 3:
+
+                number = parts[0]
+                ip = parts[1]
+
+                formatted += f"   {number} `{ip}`\n"
+
+            else:
+                formatted += line + "\n"
 
         await update.message.reply_text(
-            f"<pre>{html.escape(output)}</pre>",
-            parse_mode="HTML"
+            formatted,
+            parse_mode="Markdown"
         )
 
         return
-
 
     # -------------------------
     # ВВОД ИМЕНИ ДЛЯ ADD USER
@@ -418,7 +470,7 @@ async def handle_message(update, context):
         password = text.strip()
 
         if password != REBOOT_PASS:
-            await update.message.reply_text("Неверный пароль")
+            await update.message.reply_text("Ключ неверный 🫟")
             context.user_data["action"] = None
             return
 
@@ -431,7 +483,7 @@ async def handle_message(update, context):
         output = (result.stdout + result.stderr).strip()
 
         await update.message.reply_text(
-            output if output else "Сервер перезагружается..."
+            output if output else "Отправлен в ребут ♻️"
         )
 
         context.user_data["action"] = None

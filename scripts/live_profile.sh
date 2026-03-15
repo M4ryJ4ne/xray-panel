@@ -198,17 +198,15 @@ get_email_by_ip() {
 #while true; do
     read_xray_stats
 
-#    clear
-    echo "====== XRAY LIVE PROFILES ======"
+    echo "🟢 XRAY LIVE MONITOR"
     echo
-    echo "SERVER"
-    echo "CPU: $(get_cpu)%"
-    echo "RAM: $(get_ram)"
+    echo "🖥 SYSTEM"
+    echo "CPU: $(get_cpu)%   RAM: $(get_ram)"
     echo
 
     mapfile -t ACTIVE_IPS < <(get_active_ips)
 
-    declare -A USER_IPS=()
+    declare -A USER_IPS
 
     for ip in "${ACTIVE_IPS[@]}"; do
         [ -z "$ip" ] && continue
@@ -225,24 +223,32 @@ get_email_by_ip() {
         fi
     done
 
-    if [ "${#USER_IPS[@]}" -eq 0 ]; then
-        echo "Активных профилей нет"
+    user_count=$(printf '%s\n' "${!USER_IPS[@]}" 2>/dev/null | sed '/^$/d' | wc -l)
+
+    if [ "$user_count" -eq 0 ]; then
+        echo "🧾 ONLINE PROFILES: 0"
     else
+        echo "🧾 ONLINE PROFILES: $user_count"
+        echo
+
         idx=1
-        for email in $(printf "%s\n" "${!USER_IPS[@]}" | sort); do
+            for email in $(printf "%s\n" "${!USER_IPS[@]}" 2>/dev/null | sed '/^$/d' | sort); do
             echo "$idx. $email"
 
             rates=$(get_profile_rate "$email")
             up_bps=${rates%|*}
             down_bps=${rates#*|}
 
-            echo "   Profile traffic:"
-            echo "      Down: $(human_bps "$down_bps")"
-            echo "      Up:   $(human_bps "$up_bps")"
-
             ip_count=0
             for ip in ${USER_IPS[$email]}; do
                 ip_count=$((ip_count+1))
+            done
+
+            echo "   📡 Traffic: ↓ $(human_bps "$down_bps")   ↑ $(human_bps "$up_bps")"
+            echo "   🌐 Devices online: $ip_count"
+            echo
+
+            for ip in ${USER_IPS[$email]}; do
                 dev_id=$(get_device_id "$email" "$ip")
 
                 geo=$(get_geo "$ip")
@@ -250,11 +256,10 @@ get_email_by_ip() {
                 isp=${geo#*|}
 
                 echo "   $dev_id. $ip"
-                echo "      Country: $country"
-                echo "      ISP: $isp"
+                echo "      🏳 Country: $country"
+                echo "      🏢 ISP: $isp"
             done
 
-            echo "   Active IPs now: $ip_count"
             echo
             idx=$((idx+1))
         done

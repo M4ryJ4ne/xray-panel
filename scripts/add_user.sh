@@ -22,7 +22,7 @@ IP=$(curl -s ifconfig.me)
 PUBLIC=$(cat /opt/xray/public.key)
 
 echo
-echo "Пользователь создан"
+echo "Профиль создан 📱"
 echo
 
 echo "vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$USERNAME"

@@ -4,11 +4,11 @@ set -euo pipefail
 DB="/root/xray-panel/bot_db/users_id.db"
 
 if [ ! -f "$DB" ] || [ ! -s "$DB" ]; then
-    echo "База устройств пуста"
+    echo "База устройств пуста 🫟"
     exit 0
 fi
 
-echo "====== XRAY DEVICES ======"
+echo "Список устройств 📒"
 echo
 
 current_user=""
@@ -23,7 +23,7 @@ while IFS='|' read -r email ip device_id first_seen; do
         fi
 
         count=$((count+1))
-        echo "$count. $email"
+        echo "№ $count. $email📲"
         current_user="$email"
     fi
 
@@ -34,6 +34,6 @@ while IFS='|' read -r email ip device_id first_seen; do
     fi
 
     echo "   $device_id. $ip"
-    echo "      first seen: $first_seen_human"
+    echo "      Первое подключение: $first_seen_human"
 
 done < <(sort -t'|' -k1,1 -k3,3n "$DB")
