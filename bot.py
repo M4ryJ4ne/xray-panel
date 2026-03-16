@@ -292,23 +292,25 @@ async def handle_message(update, context):
 
         for line in lines:
 
-            # если это ссылка vless
-            if line.startswith("vless://"):
+            stripped = line.strip()
 
-                # делаем форматирование чтобы копировалось
-                formatted += f"`{line}`\n"
+            # ссылка подключения
+            if stripped.startswith("vless://"):
+                formatted += f"<code>{html.escape(stripped)}</code>\n"
+                continue
 
-            else:
-                # обычный текст без форматирования
-                formatted += line + "\n"
+            # профиль вида "1. MaryJane"
+            if stripped and stripped[0].isdigit() and ". " in stripped:
+                left, right = stripped.split(". ", 1)
+                formatted += f"{html.escape(left)}. <code>{html.escape(right)}</code>\n"
+                continue
+
+            formatted += html.escape(line) + "\n"
 
         await update.message.reply_text(
             formatted,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
-
-        return
-
 
     # -------------------------
     # ADD USER
@@ -344,16 +346,26 @@ async def handle_message(update, context):
 
         for line in lines:
 
-            if line.startswith("vless://"):
-                formatted += f"`{line}`\n"
-            else:
-                formatted += line + "\n"
+            stripped = line.strip()
+
+            # ссылка подключения
+            if stripped.startswith("vless://"):
+                formatted += f"<code>{html.escape(stripped)}</code>\n"
+                continue
+
+            # профиль вида "1. MaryJane"
+            if stripped and stripped[0].isdigit() and ". " in stripped:
+                left, right = stripped.split(". ", 1)
+                formatted += f"{html.escape(left)}. <code>{html.escape(right)}</code>\n"
+                continue
+
+            formatted += html.escape(line) + "\n"
 
         formatted += "\nВведите номер профиля 🙅‍♂"
 
         await update.message.reply_text(
             formatted,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
         context.user_data["action"] = "remove_user"
@@ -427,25 +439,28 @@ async def handle_message(update, context):
 
             stripped = line.strip()
 
-            # строка вида: "1. 185.108.19.37"
-            parts = stripped.split()
+            # строки вида "1. MaryJane" или "1. 185.108.19.37"
+            if stripped and stripped[0].isdigit() and ". " in stripped:
 
-            if len(parts) == 2 and parts[1].count(".") == 3:
+                left, right = stripped.split(". ", 1)
 
-                number = parts[0]
-                ip = parts[1]
+                # IP
+                if right.count(".") == 3:
+                    formatted += f"   {html.escape(left)}. <code>{html.escape(right)}</code>\n"
+                else:
+                    formatted += f"{html.escape(left)}. <code>{html.escape(right)}</code>\n"
 
-                formatted += f"   {number} `{ip}`\n"
+                continue
 
-            else:
-                formatted += line + "\n"
+            formatted += html.escape(line) + "\n"
 
         await update.message.reply_text(
             formatted,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
 
         return
+
 
     # -------------------------
     # ВВОД ИМЕНИ ДЛЯ ADD USER
