@@ -16,7 +16,6 @@ TS=$(date +%s)
     | select(.name | startswith("user>>>"))
     | .name + "|" + (.value|tostring)
 ' \
-
 | awk -F'|' -v ts="$TS" '
     {
         name=$1
