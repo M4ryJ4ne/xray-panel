@@ -305,6 +305,9 @@ systemctl restart xray-bot
 systemctl enable xray-devices-collector
 systemctl restart xray-devices-collector
 
+systemctl enable xray-traffic-collector
+systemctl restart xray-traffic-collector
+
 IP=$(curl -s ifconfig.me)
 
 echo
