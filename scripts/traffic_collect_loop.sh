@@ -1,7 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+set -u
 
 while true; do
-    /root/xray-panel/scripts/traffic_collect.sh
+    /root/xray-panel/scripts/traffic_collect.sh || true
     sleep 300
 done

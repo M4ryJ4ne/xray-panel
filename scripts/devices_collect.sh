@@ -39,7 +39,7 @@ get_email_by_ip() {
             }
         }
         END {print email}
-    '
+    ' || true
 }
 
 add_device_if_new() {
@@ -68,13 +68,12 @@ add_device_if_new() {
     echo "$email|$ip|$next_id|$(date +%s)" >> "$DB"
 }
 
-mapfile -t ACTIVE_IPS < <(get_active_ips)
+mapfile -t ACTIVE_IPS < <(get_active_ips || true)
 
 for ip in "${ACTIVE_IPS[@]}"; do
     [ -z "$ip" ] && continue
-
-    email=$(get_email_by_ip "$ip")
-    [ -z "$email" ] && continue
+    email=$(get_email_by_ip "$ip" || true)
+    [ -z "${email:-}" ] && continue
 
     add_device_if_new "$email" "$ip"
 done

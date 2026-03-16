@@ -12,10 +12,11 @@ TS=$(date +%s)
 
 "$XRAY_BIN" api statsquery --server="$XRAY_API" 2>/dev/null \
 | jq -r '
-    .stat[]
+    (.stat // [])[]
     | select(.name | startswith("user>>>"))
     | .name + "|" + (.value|tostring)
 ' \
+
 | awk -F'|' -v ts="$TS" '
     {
         name=$1
