@@ -39,7 +39,7 @@ if not os.path.exists(AUTH_DB):
 keyboard = [
 
     ["Мониторинг ☣️", "Статистика ☢️"],
-    ["Профили ✳️", "Устройства 🆔"],
+    ["Профили ✳️",],
     ["Добавить Профиль ⚛️", "Удалить Профиль ❎"],
     ["Перезапустить Сервер 📴"]
 
@@ -416,51 +416,6 @@ async def handle_message(update, context):
         context.user_data["action"] = "reboot_server"
 
         return
-
-
-    # -------------------------
-    # DEVICES LIST
-    # -------------------------
-
-    if text == "Устройства 🆔":
-
-        result = subprocess.run(
-            [f"{SCRIPTS_DIR}/list_devices.sh"],
-            capture_output=True,
-            text=True
-        )
-
-        output = result.stdout
-        lines = output.splitlines()
-
-        formatted = ""
-
-        for line in lines:
-
-            stripped = line.strip()
-
-            # строки вида "1. MaryJane" или "1. 185.108.19.37"
-            if stripped and stripped[0].isdigit() and ". " in stripped:
-
-                left, right = stripped.split(". ", 1)
-
-                # IP
-                if right.count(".") == 3:
-                    formatted += f"   {html.escape(left)}. <code>{html.escape(right)}</code>\n"
-                else:
-                    formatted += f"{html.escape(left)}. <code>{html.escape(right)}</code>\n"
-
-                continue
-
-            formatted += html.escape(line) + "\n"
-
-        await update.message.reply_text(
-            formatted,
-            parse_mode="HTML"
-        )
-
-        return
-
 
     # -------------------------
     # ВВОД ИМЕНИ ДЛЯ ADD USER

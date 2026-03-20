@@ -29,21 +29,6 @@ human_bytes() {
     fi
 }
 
-get_geo() {
-    local ip="$1"
-    local cache="$TMP_DIR/geo_${ip}.json"
-
-    if [ ! -f "$cache" ]; then
-        curl -s --max-time 5 "http://ip-api.com/json/$ip?fields=status,country,isp,query" > "$cache" || true
-    fi
-
-    local country isp
-    country=$(jq -r '.country // "Unknown"' "$cache" 2>/dev/null || echo "Unknown")
-    isp=$(jq -r '.isp // "Unknown"' "$cache" 2>/dev/null || echo "Unknown")
-
-    echo "$country|$isp"
-}
-
 build_window_traffic() {
     local days="$1"
     local out_file="$2"
@@ -121,39 +106,6 @@ while IFS='|' read -r email uuid shortid; do
     echo "   ♒️ Трафик за 30д: $(human_bytes "$traffic_30")"
     echo
 
-    device_found=0
-
-    if [ -f "$DEVICES_DB" ] && [ -s "$DEVICES_DB" ]; then
-        while IFS='|' read -r d_email ip device_id first_seen; do
-            [ -z "${d_email:-}" ] && continue
-            [ "$d_email" != "$email" ] && continue
-
-            device_found=1
-
-            if [ -n "${first_seen:-}" ]; then
-                first_seen_human=$(date -d "@$first_seen" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "$first_seen")
-            else
-                first_seen_human="unknown"
-            fi
-
-            geo=$(get_geo "$ip")
-            country=${geo%%|*}
-            isp=${geo#*|}
-
-            echo "   $device_id. $ip"
-            echo "      📟 Первое подключение: $first_seen_human"
-            echo "      🌐 Страна: $country"
-            echo "      💠 Провайдер: $isp"
-            echo
-
-        done < <(sort -t'|' -k1,1 -k3,3n "$DEVICES_DB")
-    fi
-
-    if [ "$device_found" -eq 0 ]; then
-        echo "   Устройств пока нет ⚠️"
-        echo
-    fi
-
 done < "$USERS_DB"
 
 total_profiles=$(awk 'NF>0' "$USERS_DB" | wc -l)
@@ -178,6 +130,6 @@ fi
 
 echo "🪁 Общее"
 echo "✳️ Всего профилей: $total_profiles"
-echo "🆔 Всего устройств: $total_devices"
+echo "🆔 Всего IP: $total_devices"
 echo "♒️ Трафик за 7д: $(human_bytes "$total_traffic_7")"
 echo "♒️ Трафик за 30д: $(human_bytes "$total_traffic_30")"
