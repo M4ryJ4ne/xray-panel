@@ -13,6 +13,8 @@ DB_DIR="$PANEL_DIR/bot_db"
 USERS_DB="$DB_DIR/users.db"
 AUTH_DB="$DB_DIR/auth_users.db"
 USERS_ID_DB="$DB_DIR/users_id.db"
+PAYDAY_DB="$DB_DIR/payday.db"
+PAYDAY_NOTIFY_DB="$DB_DIR/payday_notify.db"
 
 XRAY_SERVICE="/etc/systemd/system/xray.service"
 BOT_SERVICE="/etc/systemd/system/xray-bot.service"
@@ -27,6 +29,8 @@ mkdir -p /var/log/xray
 touch "$USERS_DB"
 touch "$AUTH_DB"
 touch "$USERS_ID_DB"
+touch "$PAYDAY_DB"
+touch "$PAYDAY_NOTIFY_DB"
 
 echo "Устанавливаем зависимости..."
 apt update -y
@@ -86,6 +90,16 @@ read -rp "Введите имя первого пользователя: " USERN
 read -rp "Введите BOT_TOKEN: " BOT_TOKEN
 read -rp "Введите пароль входа в бота (BOT_PASS): " BOT_PASS
 read -rp "Введите пароль для Reboot Server (REBOOT_PASS): " REBOOT_PASS
+read -rp "Введите день оплаты сервера (1-31): " PAYDAY_DAY
+
+if ! [[ "$PAYDAY_DAY" =~ ^[0-9]+$ ]] || [ "$PAYDAY_DAY" -lt 1 ] || [ "$PAYDAY_DAY" -gt 31 ]; then
+    echo "Введите число от 1 до 31"
+    exit 1
+fi
+
+echo "$PAYDAY_DAY" > "$PAYDAY_DB"
+: > "$PAYDAY_NOTIFY_DB"
+
 
 UUID=$("$XRAY_DIR/xray" uuid)
 SHORTID=$(openssl rand -hex 4)

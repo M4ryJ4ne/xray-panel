@@ -4,6 +4,7 @@ import subprocess
 from telegram import Update, ReplyKeyboardMarkup
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from datetime import datetime, date
 
 
 # =========================
@@ -27,9 +28,14 @@ REBOOT_PASS = config["REBOOT_PASS"]
 BOT_PASS = config["BOT_PASS"]
 
 AUTH_DB = "/root/xray-panel/bot_db/auth_users.db"
+PAYDAY_DB = "/root/xray-panel/bot_db/payday.db"
+PAYDAY_NOTIFY_DB = "/root/xray-panel/bot_db/payday_notify.db"
+
 os.makedirs("/root/xray-panel/bot_db", exist_ok=True)
-if not os.path.exists(AUTH_DB):
-    open(AUTH_DB, "a").close()
+
+for db_file in [AUTH_DB, PAYDAY_DB, PAYDAY_NOTIFY_DB]:
+    if not os.path.exists(db_file):
+        open(db_file, "a").close()
 
 
 # =========================
@@ -67,6 +73,9 @@ async def start(update, context):
 
     await update.message.reply_text("Требуется ключ 🫆")
 
+async def post_init(application):
+    application.create_task(payday_reminder_task(application))
+
 
 # =========================
 # АВТОРИЗАЦИЯ ПО БАЗЕ USER ID
@@ -82,6 +91,40 @@ def add_authorized_user(user_id: int) -> None:
         return
     with open(AUTH_DB, "a") as f:
         f.write(f"{user_id}\n")
+
+def get_authorized_users() -> list[int]:
+    with open(AUTH_DB, "r") as f:
+        ids = []
+        for line in f:
+            line = line.strip()
+            if line.isdigit():
+                ids.append(int(line))
+    return ids
+
+
+def read_payday_day() -> int | None:
+    try:
+        with open(PAYDAY_DB, "r") as f:
+            value = f.read().strip()
+        if not value:
+            return None
+        return int(value)
+    except Exception:
+        return None
+
+
+def was_notified_today(payday_str: str, today_str: str) -> bool:
+    try:
+        with open(PAYDAY_NOTIFY_DB, "r") as f:
+            value = f.read().strip()
+        return value == f"{payday_str}|{today_str}"
+    except Exception:
+        return False
+
+
+def save_notify_stamp(payday_str: str, today_str: str) -> None:
+    with open(PAYDAY_NOTIFY_DB, "w") as f:
+        f.write(f"{payday_str}|{today_str}")
 
 
 # =========================
@@ -156,6 +199,73 @@ async def live_monitor_task(update, context):
 
     # сброс флага задачи
     context.user_data["live_monitor_task"] = None
+
+
+# =========================
+# PAYDAY REMINDER TASK
+# =========================
+
+async def payday_reminder_task(application):
+    while True:
+        try:
+            payday_day = read_payday_day()
+
+            if payday_day:
+                today = date.today()
+
+                # дата оплаты в этом месяце
+                try:
+                    this_month_payday = date(today.year, today.month, payday_day)
+                except ValueError:
+                    # если, например, 31 числа нет → берём последний день месяца
+                    from calendar import monthrange
+                    last_day = monthrange(today.year, today.month)[1]
+                    this_month_payday = date(today.year, today.month, last_day)
+
+                # если уже прошло → берем следующий месяц
+                if this_month_payday < today:
+                    if today.month == 12:
+                        year = today.year + 1
+                        month = 1
+                    else:
+                        year = today.year
+                        month = today.month + 1
+
+                    from calendar import monthrange
+                    last_day = monthrange(year, month)[1]
+                    day = min(payday_day, last_day)
+
+                    this_month_payday = date(year, month, day)
+
+                days_left = (this_month_payday - today).days
+
+                key = f"{this_month_payday.strftime('%Y-%m')}"
+
+                if days_left == 3 and not was_notified_today(key, today.strftime("%Y-%m-%d")):
+
+                    users = get_authorized_users()
+
+                    text = (
+                        "💸 Напоминание об оплате сервера\n\n"
+                        f"До оплаты осталось 3 дня.\n"
+                        f"Дата оплаты: {this_month_payday.strftime('%Y-%m-%d')}"
+                    )
+
+                    for user_id in users:
+                        try:
+                            await application.bot.send_message(
+                                chat_id=user_id,
+                                text=text
+                            )
+                        except:
+                            pass
+
+                    save_notify_stamp(key, today.strftime("%Y-%m-%d"))
+
+        except:
+            pass
+
+        await asyncio.sleep(3600)
 
 
 # =========================
@@ -514,7 +624,7 @@ async def handle_message(update, context):
 # ЗАПУСК БОТА
 # =========================
 
-app = ApplicationBuilder().token(TOKEN).build()
+app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT, handle_message))
