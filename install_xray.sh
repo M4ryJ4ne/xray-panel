@@ -9,12 +9,14 @@ PANEL_DIR="/root/xray-panel"
 XRAY_DIR="/opt/xray"
 CONFIG_JSON="$XRAY_DIR/config.json"
 BOT_CONFIG="$PANEL_DIR/config"
+
 DB_DIR="$PANEL_DIR/bot_db"
 USERS_DB="$DB_DIR/users.db"
 AUTH_DB="$DB_DIR/auth_users.db"
 USERS_ID_DB="$DB_DIR/users_id.db"
 PAYDAY_DB="$DB_DIR/payday.db"
 PAYDAY_NOTIFY_DB="$DB_DIR/payday_notify.db"
+TRAFFIC_DB="$DB_DIR/traffic_history.db"
 
 XRAY_SERVICE="/etc/systemd/system/xray.service"
 BOT_SERVICE="/etc/systemd/system/xray-bot.service"
@@ -31,15 +33,16 @@ touch "$AUTH_DB"
 touch "$USERS_ID_DB"
 touch "$PAYDAY_DB"
 touch "$PAYDAY_NOTIFY_DB"
+touch "$TRAFFIC_DB"
 
 echo "Устанавливаем зависимости..."
 apt update -y
 apt install -y curl unzip jq openssl python3 python3-pip ca-certificates python3-venv
-#python3 -m pip install --break-system-packages python-telegram-bot >/dev/null 2>&1 || true
-cd $PANEL_DIR
+
+cd "$PANEL_DIR"
 python3 -m venv venv
-$PANEL_DIR/venv/bin/pip install --upgrade pip
-$PANEL_DIR/venv/bin/pip install -r $PANEL_DIR/requirements.txt
+"$PANEL_DIR/venv/bin/pip" install --upgrade pip
+"$PANEL_DIR/venv/bin/pip" install -r "$PANEL_DIR/requirements.txt"
 
 echo "Останавливаем старые сервисы..."
 systemctl stop xray 2>/dev/null || true
@@ -50,6 +53,7 @@ systemctl stop xray-traffic-collector 2>/dev/null || true
 echo "Скачиваем Xray..."
 cd /tmp
 rm -f /tmp/xray.zip
+rm -rf /tmp/xray_unpack
 curl -L https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip -o /tmp/xray.zip
 unzip -o /tmp/xray.zip -d /tmp/xray_unpack >/dev/null
 rm -rf "$XRAY_DIR"
@@ -64,10 +68,11 @@ echo "Проверяем Xray..."
 echo "Генерируем Reality ключи..."
 KEY_OUTPUT=$("$XRAY_DIR/xray" x25519)
 
-PRIVATE=$(echo "$KEY_OUTPUT" | awk '/PrivateKey/ {print $2}')
-PUBLIC=$(echo "$KEY_OUTPUT" | awk '/PublicKey/ {print $2}')
+PRIVATE=$(echo "$KEY_OUTPUT" | sed -n 's/^PrivateKey: *//p' | head -n1)
+PUBLIC=$(echo "$KEY_OUTPUT" | sed -n 's/^Password (PublicKey): *//p' | head -n1)
+
 if [ -z "${PUBLIC:-}" ]; then
-    PUBLIC=$(echo "$KEY_OUTPUT" | awk '/Password/ {print $2}')
+    PUBLIC=$(echo "$KEY_OUTPUT" | sed -n 's/^PublicKey: *//p' | head -n1)
 fi
 
 if [ -z "${PRIVATE:-}" ]; then
@@ -77,7 +82,7 @@ if [ -z "${PRIVATE:-}" ]; then
 fi
 
 if [ -z "${PUBLIC:-}" ]; then
-    echo "Ошибка генерации PublicKey/Password"
+    echo "Ошибка генерации PublicKey"
     echo "$KEY_OUTPUT"
     exit 1
 fi
@@ -100,7 +105,6 @@ fi
 echo "$PAYDAY_DAY" > "$PAYDAY_DB"
 : > "$PAYDAY_NOTIFY_DB"
 
-
 UUID=$("$XRAY_DIR/xray" uuid)
 SHORTID=$(openssl rand -hex 4)
 
@@ -117,109 +121,112 @@ EOF
 echo "Создаём config.json Xray..."
 cat > "$CONFIG_JSON" <<EOF
 {
-"log": {
-"access": "/var/log/xray/access.log",
-"error": "/var/log/xray/error.log",
-"loglevel": "warning"
-},
+  "log": {
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "warning"
+  },
 
-"api": {
-"services": ["StatsService"],
-"tag": "api"
-},
+  "api": {
+    "services": ["StatsService"],
+    "tag": "api"
+  },
 
-"stats": {},
+  "stats": {},
 
-"policy": {
-"system": {
-"statsInboundUplink": true,
-"statsInboundDownlink": true
-}
-},
+  "policy": {
+    "system": {
+      "statsInboundUplink": true,
+      "statsInboundDownlink": true
+    },
+    "levels": {
+      "0": {
+        "statsUserUplink": true,
+        "statsUserDownlink": true
+      }
+    }
+  },
 
-"routing": {
-"domainStrategy": "AsIs",
-"rules": [
-{
-"type": "field",
-"inboundTag": ["api"],
-"outboundTag": "api"
-}
-]
-},
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["api"],
+        "outboundTag": "api"
+      }
+    ]
+  },
 
-"inbounds": [
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "api"
+    },
 
-{
-"listen": "127.0.0.1",
-"port": 10085,
-"protocol": "dokodemo-door",
-"settings": {
-"address": "127.0.0.1"
-},
-"tag": "api"
-},
+    {
+      "port": 443,
+      "protocol": "vless",
+      "tag": "vless_tls",
 
-{
-"port": 443,
-"protocol": "vless",
-"tag": "vless_tls",
+      "settings": {
+        "clients": [
+          {
+            "id": "$UUID",
+            "email": "$USERNAME",
+            "flow": "xtls-rprx-vision",
+            "level": 0
+          }
+        ],
+        "decryption": "none"
+      },
 
-"settings": {
-"clients": [
-{
-"id": "$UUID",
-"email": "$USERNAME",
-"flow": "xtls-rprx-vision"
-}
-],
-"decryption": "none"
-},
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
 
-"streamSettings": {
-"network": "tcp",
-"security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "www.microsoft.com:443",
+          "xver": 0,
 
-"realitySettings": {
-"show": false,
-"dest": "www.microsoft.com:443",
-"xver": 0,
+          "serverNames": [
+            "www.microsoft.com"
+          ],
 
-"serverNames": [
-"www.microsoft.com"
-],
+          "privateKey": "$PRIVATE",
 
-"privateKey": "$PRIVATE",
+          "shortIds": [
+            "$SHORTID"
+          ]
+        }
+      },
 
-"shortIds": [
-"$SHORTID"
-]
-}
-},
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      }
+    }
+  ],
 
-"sniffing": {
-"enabled": true,
-"destOverride": [
-"http",
-"tls"
-]
-}
-
-}
-
-],
-
-"outbounds": [
-{
-"protocol": "freedom",
-"tag": "direct"
-},
-{
-"protocol": "blackhole",
-"tag": "block"
-}
-]
-
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    }
+  ]
 }
 EOF
 
@@ -280,7 +287,7 @@ After=network.target xray.service
 
 [Service]
 Type=simple
-ExecStart=$PANEL_DIR/scripts/devices_collect_loop.sh
+ExecStart=$PANEL_DIR/scripts/devices_collect_loop.sh 5
 Restart=always
 RestartSec=3
 User=root
@@ -297,7 +304,7 @@ After=network.target xray.service
 
 [Service]
 Type=simple
-ExecStart=$PANEL_DIR/scripts/traffic_collect_loop.sh
+ExecStart=$PANEL_DIR/scripts/traffic_collect_loop.sh 300
 Restart=always
 RestartSec=5
 User=root
@@ -313,6 +320,7 @@ systemctl enable xray
 systemctl restart xray
 
 sleep 2
+
 systemctl enable xray-bot
 systemctl restart xray-bot
 

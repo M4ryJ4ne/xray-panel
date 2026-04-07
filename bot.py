@@ -28,6 +28,7 @@ REBOOT_PASS = config["REBOOT_PASS"]
 BOT_PASS = config["BOT_PASS"]
 
 AUTH_DB = "/root/xray-panel/bot_db/auth_users.db"
+USERS_DB = "/root/xray-panel/bot_db/users.db"
 PAYDAY_DB = "/root/xray-panel/bot_db/payday.db"
 PAYDAY_NOTIFY_DB = "/root/xray-panel/bot_db/payday_notify.db"
 
@@ -422,6 +423,8 @@ async def handle_message(update, context):
             parse_mode="HTML"
         )
 
+        return
+
     # -------------------------
     # ADD USER
     # -------------------------
@@ -443,33 +446,28 @@ async def handle_message(update, context):
 
     if text == "Удалить Профиль ❎":
 
-        result = subprocess.run(
-            [f"{SCRIPTS_DIR}/list_users.sh"],
-            capture_output=True,
-            text=True
-        )
+        if not os.path.exists(USERS_DB):
+            await update.message.reply_text("База профилей не найдена ⚠️")
+            return
 
-        output = result.stdout
-        lines = output.splitlines()
+        formatted = "Список профилей для удаления 📕\n\n"
+        count = 0
 
-        formatted = ""
+        with open(USERS_DB, "r") as f:
+            for i, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
 
-        for line in lines:
+                parts = line.split("|")
+                email = parts[0].strip()
 
-            stripped = line.strip()
+                formatted += f"{i}. <code>{html.escape(email)}</code>\n"
+                count += 1
 
-            # ссылка подключения
-            if stripped.startswith("vless://"):
-                formatted += f"<code>{html.escape(stripped)}</code>\n"
-                continue
-
-            # профиль вида "1. MaryJane"
-            if stripped and stripped[0].isdigit() and ". " in stripped:
-                left, right = stripped.split(". ", 1)
-                formatted += f"{html.escape(left)}. <code>{html.escape(right)}</code>\n"
-                continue
-
-            formatted += html.escape(line) + "\n"
+        if count == 0:
+            await update.message.reply_text("Профилей нет ⚠️")
+            return
 
         formatted += "\nВведите номер профиля 🙅‍♂"
 
