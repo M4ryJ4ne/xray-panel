@@ -25,4 +25,4 @@ echo
 echo "Профиль создан 📱"
 echo
 
-echo "vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$USERNAME"
+echo "vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.yahoo.com&sid=$SHORTID#$USERNAME"

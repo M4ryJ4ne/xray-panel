@@ -123,11 +123,11 @@ jq -n \
 
                 realitySettings: {
                     show: false,
-                    dest: "www.microsoft.com:443",
+                    dest: "www.yahoo.com:443",
                     xver: 0,
 
                     serverNames: [
-                        "www.microsoft.com"
+                        "www.yahoo.com"
                     ],
 
                     privateKey: $private,

@@ -18,7 +18,7 @@ i=1
 while IFS="|" read -r EMAIL UUID SHORTID
 do
 
-LINK="vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$EMAIL"
+LINK="vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.yahoo.com&sid=$SHORTID#$EMAIL"
 
 echo "$i. $EMAIL📲"
 echo

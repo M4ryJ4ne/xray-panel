@@ -192,11 +192,11 @@ cat > "$CONFIG_JSON" <<EOF
 
         "realitySettings": {
           "show": false,
-          "dest": "www.microsoft.com:443",
+          "dest": "www.yahoo.com:443",
           "xver": 0,
 
           "serverNames": [
-            "www.microsoft.com"
+            "www.yahoo.com"
           ],
 
           "privateKey": "$PRIVATE",
@@ -352,7 +352,7 @@ systemctl --no-pager --full status xray-traffic-collector || true
 
 echo
 echo "Ссылка подключения:"
-echo "vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.microsoft.com&sid=$SHORTID#$USERNAME"
+echo "vless://$UUID@$IP:443?type=tcp&security=reality&pbk=$PUBLIC&flow=xtls-rprx-vision&sni=www.yahoo.com&sid=$SHORTID#$USERNAME"
 
 echo
 echo "users.db:"
